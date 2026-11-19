@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raulsystem Webmail</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="brand">
+      <div class="brand-logo">R</div>
+      <div>
+        <div class="brand-name">Raulsystem</div>
+        <div class="brand-sub">Webmail</div>
+      </div>
+    </div>
+    <form id="loginForm">
+      <div class="field-group">
+        <label>E-mail</label>
+        <div class="input-wrap">
+          <input type="email" id="email" placeholder="seu@email.com" required>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Senha</label>
+        <div class="input-wrap">
+          <input type="password" id="password" placeholder="••••••••••••••••" required>
+        </div>
+      </div>
+      <div id="error-msg" class="error-msg" style="display:none"></div>
+      <button type="submit" class="btn-enter" id="submitBtn">Entrar</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const err = document.getElementById('error-msg');
+      btn.disabled = true;
+      btn.textContent = 'Conectando...';
+      err.style.display = 'none';
+      try {
+        const r = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await r.json();
+        if (r.ok) { window.location.href = '/'; }
+        else {
+          err.textContent = data.error || 'Erro ao fazer login';
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Entrar';
+        }
+      } catch(e) {
+        err.textContent = 'Erro de conexão';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>
