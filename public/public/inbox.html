@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raulsystem Webmail</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="inbox-page">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-logo-sm">R</div>
+      <span>Raulsystem <span class="brand-sub-inline">Webmail</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="user-email" id="userEmail"></span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </header>
+  <div class="inbox-layout">
+    <div class="msg-list">
+      <div class="msg-list-header">
+        <span>Caixa de entrada</span>
+        <div class="dot-live"></div>
+        <button class="btn-refresh" onclick="loadInbox()">↻</button>
+      </div>
+      <div id="listContent"><div class="loading">Carregando...</div></div>
+    </div>
+    <div class="msg-view" id="msgView">
+      <div class="empty-view"><p>Selecione uma mensagem</p></div>
+    </div>
+  </div>
+  <script>
+    let messages = [];
+    async function loadInbox() {
+      document.getElementById('listContent').innerHTML = '<div class="loading">Carregando...</div>';
+      try {
+        const r = await fetch('/inbox');
+        if (r.status === 401) { window.location.href = '/'; return; }
+        const data = await r.json();
+        document.getElementById('userEmail').textContent = data.email;
+        messages = data.messages || [];
+        renderList(messages);
+      } catch(e) {
+        document.getElementById('listContent').innerHTML = '<div class="loading">Erro ao carregar</div>';
+      }
+    }
+    function renderList(msgs) {
+      const c = document.getElementById('listContent');
+      if (!msgs.length) { c.innerHTML = '<div class="loading">Caixa vazia</div>'; return; }
+      c.innerHTML = msgs.map((m, i) => {
+        const from = m.headers['from'] || 'Desconhecido';
+        const subject = m.headers['subject'] || '(sem assunto)';
+        const date = m.headers['date'] ? new Date(m.headers['date']).toLocaleDateString('pt-BR') : '';
+        return `<div class="msg-item" onclick="viewMessage(${i})" id="item-${i}">
+          <div class="msg-from">${esc(from)}</div>
+          <div class="msg-subject">${esc(subject)}</div>
+          <div class="msg-date">${date}</div>
+        </div>`;
+      }).join('');
+    }
+    async function viewMessage(idx) {
+      document.querySelectorAll('.msg-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(`item-${idx}`)?.classList.add('active');
+      const m = messages[idx];
+      document.getElementById('msgView').innerHTML = '<div class="loading">Carregando...</div>';
+      try {
+        const r = await fetch(`/message/${m.uid}`);
+        const data = await r.json();
+        document.getElementById('msgView').innerHTML = `
+          <div class="msg-detail">
+            <div class="msg-detail-header">
+              <div class="msg-detail-subject">${esc(data.subject || '')}</div>
+              <div class="msg-detail-meta"><span>De: ${esc(data.from)}</span></div>
+            </div>
+            <iframe class="msg-iframe" srcdoc="${(data.html||'').replace(/"/g,'&quot;')}" sandbox="allow-same-origin" frameborder="0"></iframe>
+          </div>`;
+      } catch(e) {
+        document.getElementById('msgView').innerHTML = '<div class="loading">Erro</div>';
+      }
+    }
+    async function logout() {
+      await fetch('/logout', { method: 'POST' });
+      window.location.href = '/';
+    }
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    loadInbox();
+    setInterval(loadInbox, 60000);
+  </script>
+</body>
+</html>
